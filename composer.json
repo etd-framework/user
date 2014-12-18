@@ -20,9 +20,9 @@
     "joomla/language": "~1.0",
     "joomla/registry": "~1.0",
     "joomla/utilities": "~1.0",
-    "etdsolutions/application": "dev-master",
-    "etdsolutions/model": "dev-master",
-    "etdsolutions/table": "dev-master"
+    "etdsolutions/application": "@dev",
+    "etdsolutions/model": "@dev",
+    "etdsolutions/table": "@dev"
   },
   "autoload": {
     "psr-4": {
