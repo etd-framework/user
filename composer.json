@@ -1,6 +1,7 @@
 {
   "name": "etdsolutions/user",
   "type": "etd-package",
+  "minimum-stability": "dev",
   "description": "Package User du Framework ETD",
   "homepage": "https://github.com/etd-framework/user",
   "license": "Apache-2.0",
