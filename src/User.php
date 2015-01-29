@@ -165,6 +165,9 @@ class User extends DataObject {
      */
     public function load($id) {
 
+        $text = Web::getInstance()
+                   ->getText();
+
         // On récupère le table.
         $table = Table::getInstance('user');
 
@@ -172,7 +175,7 @@ class User extends DataObject {
         if (!$table->load($id)) {
 
             // On déclenche une exception.
-            throw new \RuntimeException(Text::sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
+            throw new \RuntimeException($text->sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
 
         } else {
 
