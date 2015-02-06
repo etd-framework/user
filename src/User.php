@@ -10,12 +10,10 @@
 namespace EtdSolutions\User;
 
 use EtdSolutions\Application\Web;
-use EtdSolutions\Model\Model;
 use EtdSolutions\Table\Table;
 use Joomla\Crypt\Crypt;
 use Joomla\Data\DataObject;
 use Joomla\Filter\InputFilter;
-use Joomla\Language\Text;
 use Joomla\Registry\Registry;
 use Joomla\Utilities\ArrayHelper;
 
