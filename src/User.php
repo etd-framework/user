@@ -190,7 +190,9 @@ class User extends DataObject {
             $user->params = new Registry($user->params);
 
             // On transforme le profile en objet.
-            $user->profile = ArrayHelper::toObject($user->profile);
+            if (is_array($user->profile)) {
+                $user->profile = ArrayHelper::toObject($user->profile);
+            }
 
             // On vire le mot de passe.
             $user->password = '';
