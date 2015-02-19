@@ -23,7 +23,8 @@
     "joomla/utilities": "~1.0",
     "etdsolutions/application": "@dev",
     "etdsolutions/model": "@dev",
-    "etdsolutions/table": "@dev"
+    "etdsolutions/table": "@dev",
+    "etdsolutions/acl": "@dev"
   },
   "autoload": {
     "psr-4": {
