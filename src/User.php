@@ -9,6 +9,7 @@
 
 namespace EtdSolutions\User;
 
+use EtdSolutions\Acl\Acl;
 use EtdSolutions\Application\Web;
 use EtdSolutions\Table\Table;
 use Joomla\Crypt\Crypt;
@@ -26,7 +27,6 @@ defined('_JEXEC') or die;
  *
  * @property integer  $id     L'identifiant de l'utilisateur.
  * @property bool     $guest  True si l'utilisateur n'est pas connecté.
- * @property Registry $rights Un registre contenant les droits de l'utilisateur.
  * @property Registry $params Un registre contenant les paramètres personnalisés de l'utilisateur.
  */
 class User extends DataObject {
@@ -52,7 +52,6 @@ class User extends DataObject {
                 'id'        => 0,
                 'sendEmail' => 0,
                 'guest'     => 1,
-                'rights'    => new Registry,
                 'params'    => new Registry,
                 'profile'   => new \stdClass()
             );
@@ -103,36 +102,17 @@ class User extends DataObject {
     /**
      * Méthode pour contrôler si l'utilisateur a le droit d'effectuer une action.
      *
-     * @param   string $action  Le nom de l'action a contrôler.
      * @param   string $section La section sur laquelle on veut appliquer l'action.
+     * @param   string $action  Le nom de l'action a contrôler.
      *
      * @return  boolean  True si autorisé, false sinon.
      */
-    public function authorise($action, $section) {
+    public function authorise($section, $action) {
 
-        // On contruit le chemin dans le registre des droits.
-        $path = strtolower($section . "." . $action);
+        $acl     = Acl::getInstance();
+        $user_id = (int) $this->getProperty('id');
 
-        // On charge le registre.
-        $rights = $this->getProperty('rights');
-
-        // On contrôle que c'est bien un registre.
-        if ($rights instanceof Registry) {
-
-            // On teste d'abord si c'est un administrateur (un dieu !)
-            if ($rights->get("app.admin", false)) {
-                return true;
-            }
-
-            // On récupère la valeur.
-            $right = $rights->get($path, false);
-
-            // On retourne la valeur en contrôllant qu'elle est bien égale à true.
-            return ($right === true);
-
-        }
-
-        return false;
+        return $acl->checkUser($user_id, $section, $action);
 
     }
 
@@ -182,9 +162,6 @@ class User extends DataObject {
 
             // Ce n'est plus un invité.
             $user->guest = 0;
-
-            // On transforme les droits en objet registre.
-            $user->rights = new Registry($user->rights);
 
             // On transforme les paramètres en registre.
             $user->params = new Registry($user->params);
