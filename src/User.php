@@ -107,10 +107,15 @@ class User extends DataObject {
      *
      * @return  boolean  True si autorisé, false sinon.
      */
-    public function authorise($section, $action) {
+    public function authorise($section, $action = '') {
 
         $acl     = Acl::getInstance();
         $user_id = (int) $this->getProperty('id');
+
+        // Raccourci
+        if (strpos($section, '.') !== false) {
+            list($section, $action) = explode(".", $section, 2);
+        }
 
         return $acl->checkUser($user_id, $section, $action);
 
