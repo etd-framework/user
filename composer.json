@@ -16,15 +16,13 @@
   "require": {
     "php": ">=5.4",
     "joomla/crypt": "~1.0",
-    "joomla/data": "~2.0@dev",
-    "joomla/filter": "~1.0",
-    "joomla/language": "~2.0@dev",
-    "joomla/registry": "~2.0@dev",
+    "joomla/data": "2.0.*@dev",
+    "joomla/database": "~1.0",
+    "joomla/registry": "2.0.*@dev",
     "joomla/utilities": "~1.0",
-    "etdsolutions/application": "@dev",
-    "etdsolutions/model": "@dev",
-    "etdsolutions/table": "@dev",
-    "etdsolutions/acl": "@dev"
+    "etdsolutions/acl": "@dev",
+    "etdsolutions/language": "@dev",
+    "etdsolutions/table": "@dev"
   },
   "autoload": {
     "psr-4": {
