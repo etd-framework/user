@@ -10,15 +10,15 @@
 namespace EtdSolutions\User;
 
 use EtdSolutions\Acl\Acl;
-use EtdSolutions\Application\Web;
-use EtdSolutions\Table\Table;
+use EtdSolutions\Language\LanguageFactory;
+use EtdSolutions\Table\UserTable;
+
 use Joomla\Crypt\Crypt;
 use Joomla\Data\DataObject;
-use Joomla\Filter\InputFilter;
+use Joomla\Database\DatabaseDriver;
 use Joomla\Registry\Registry;
+use Joomla\Session\Session;
 use Joomla\Utilities\ArrayHelper;
-
-defined('_JEXEC') or die;
 
 /**
  * Class User
@@ -32,66 +32,46 @@ defined('_JEXEC') or die;
 class User extends DataObject {
 
     /**
-     * @var    array  Instances User.
+     * @var Session L'objet session.
      */
-    protected static $instances = array();
+    private $session;
 
     /**
-     * Instancie l'objet utilisateur.
-     *
-     * @param   integer $id La clé primaire identifiant l'utilisateur à charger.
+     * @var DatabaseDriver L'objet DB.
      */
-    public function __construct($id = 0) {
+    private $db;
 
-        // On charge l'utilisateur s'il existe.
-        if (!empty($id)) {
-            $properties = $this->load($id);
-        } else {
-            // Initialise
-            $properties = array(
-                'id'        => 0,
-                'sendEmail' => 0,
-                'guest'     => 1,
-                'params'    => new Registry,
-                'profile'   => new \stdClass()
-            );
-        }
+    /**
+     * @var array Un tableau pour mettre en cache les propriétés des instances.
+     */
+    private static $instances = [];
 
-        parent::__construct($properties);
+    /**
+     * Constructeur.
+     *
+     * @param Session        $session La session courrante.
+     * @param DatabaseDriver $db      Le gestionnaire de base de données.
+     */
+    public function __construct(Session $session, DatabaseDriver $db) {
+
+        $this->session = $session;
+        $this->db      = $db;
+
+        parent::__construct([
+            'id' => 0,
+            'sendEmail' => 0,
+            'guest' => 1,
+            'params' => new Registry,
+            'profile' => new \stdClass()
+        ]);
+
     }
 
     /**
-     * Retourne l'objet global User, en le créant seulement il n'existe pas déjà.
+     * Détermine si l'utilisateur est invité
      *
-     * @param   integer $id L'utilisateur à charger
-     *
-     * @return  User  L'objet User.
+     * @return bool True si invité, false sinon.
      */
-    public static function getInstance($id = null) {
-
-        $app      = Web::getInstance();
-        $instance = $app->getSession()
-                        ->get('user');
-
-        if (is_null($id) || (!is_null($instance) && $instance->id == $id)) {
-
-            if (!($instance instanceof User)) {
-                return new User;
-            }
-
-            return $instance;
-        } elseif (is_null($instance) || $instance->id != $id) {
-
-            // On regarde si cet utilisateur est déjà en cache.
-            if (empty(self::$instances[$id])) {
-                self::$instances[$id] = new User($id);
-            }
-
-        }
-
-        return self::$instances[$id];
-    }
-
     public function isGuest() {
 
         $guest = $this->getProperty('guest');
@@ -109,7 +89,7 @@ class User extends DataObject {
      */
     public function authorise($section, $action = '') {
 
-        $acl     = Acl::getInstance();
+        $acl     = Acl::getInstance($this->db);
         $user_id = (int) $this->getProperty('id');
 
         // Raccourci
@@ -131,115 +111,80 @@ class User extends DataObject {
     public function setLastVisit($timestamp = null) {
 
         // On récupère le table.
-        $table = Table::getInstance('user');
+        $table = new UserTable($this->db);
 
         // On met à jour la date.
         return $table->setLastVisit($timestamp, $this->getProperty('id'));
     }
 
     /**
-     * Méthode proxy pour le modèle pour charger un utilisateur.
+     * Méthode pour charger les données d'un utilisateur.
      *
-     * @param   mixed $id The user id of the user to load
+     * @param   int   $id    L'id de l'utilisateur.
+     * @param   bool  $force True pour forcer le rechargement.
      *
-     * @return  object  Les données de l'utilisteur.
+     * @return  User
      *
      * @throws  \RuntimeException
      */
-    public function load($id) {
+    public function load($id = null, $force = false) {
 
-        $text = Web::getInstance()
-                   ->getText();
+        // On s'assure d'avoir un integer.
+        $id = (int) $id;
 
-        // On récupère le table.
-        $table = Table::getInstance('user');
+        // Si aucun id n'est passé, on tente de le trouvé dans la session.
+        if (empty($id)) {
 
-        // On tente de charger l'utilisateur.
-        if (!$table->load($id)) {
+            $id = (int) $this->session->get('user_id');
 
-            // On déclenche une exception.
-            throw new \RuntimeException($text->sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
-
-        } else {
-
-            // On récupère ses propriétés.
-            $user = $table->dump(0);
-
-            // Ce n'est plus un invité.
-            $user->guest = 0;
-
-            // On transforme les paramètres en registre.
-            $user->params = new Registry($user->params);
-
-            // On transforme le profile en objet.
-            if (is_array($user->profile)) {
-                $user->profile = ArrayHelper::toObject($user->profile);
+            // Si c'est toujours vide, on retourne l'utilisateur courant.
+            if (empty($id)) {
+                $this->clear();
+                return $this;
             }
 
-            // On vire le mot de passe.
-            $user->password = '';
+        }
+
+        // On regarde si l'utilisateur n'est pas déjà en cache.
+        if (!array_key_exists($id, self::$instances) || $force) {
+
+            $text = (new LanguageFactory)->getText();
+
+            // On récupère le table.
+            $table = new UserTable($this->db);
+
+            // On tente de charger l'utilisateur.
+            if (!$table->load($id)) {
+
+                // On déclenche une exception.
+                throw new \RuntimeException($text->sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
+
+            } else {
+
+                // On récupère ses propriétés.
+                $user = $table->dump();
+
+                // Ce n'est plus un invité.
+                $user->guest = 0;
+
+                // On transforme les paramètres en registre.
+                $user->params = new Registry($user->params);
+
+                // On transforme le profile en objet.
+                if (is_array($user->profile)) {
+                    $user->profile = ArrayHelper::toObject($user->profile);
+                }
+
+                // On vire le mot de passe.
+                $user->password = '';
+
+            }
+
+            self::$instances[$id] = clone $this->bind($user);
 
         }
 
-        return $user;
-    }
-
-    /**
-     * Méthode pour déconnecter l'utilisateur.
-     *
-     * @return bool True si succès.
-     */
-    public function logout() {
-
-        $my      = self::getInstance();
-        $app     = Web::getInstance();
-        $session = $app->getSession();
-        $db      = $app->getDb();
-        $input   = $app->getInput();
-
-        // Est-on en train de supprimer la session en cours ?
-        if ($my->id == $this->id) {
-
-            // On met à jour la dernière visite.
-            $this->setLastVisit();
-
-            // On supprime la session PHP.
-            $session->destroy();
-        }
-
-        // On force la déconnexion de tous les utilisateurs avec cet id.
-        $db->setQuery($db->getQuery(true)
-                         ->delete($db->quoteName('#__session'))
-                         ->where($db->quoteName('userid') . ' = ' . (int)$this->id))
-           ->execute();
-
-        // On supprime tous les cookie d'authentification de l'utilisateur.
-        $cookieName  = $app->getShortHashedUserAgent();
-        $cookieValue = $input->cookie->get($cookieName);
-
-        // S'il n y a de cookie à supprimer.
-        if (!$cookieValue) {
-            return true;
-        }
-
-        $cookieArray = explode('.', $cookieValue);
-
-        // On filtre la série car on l'utilise dans la requête.
-        $filter = new InputFilter;
-        $series = $filter->clean($cookieArray[1], 'ALNUM');
-
-        // On supprime l'enregistrement dans la base de données.
-        $query = $db->getQuery(true);
-        $query->delete('#__user_keys')
-              ->where($db->quoteName('series') . ' = ' . $db->quote($series));
-        $db->setQuery($query)
-           ->execute();
-
-        // On supprime le cookie.
-        $input->cookie->set($cookieName, false, time() - 42000, $app->get('cookie_path', '/'), $app->get('cookie_domain'));
-
-        return true;
-
+        return self::$instances[$id];
     }
 
     /**
@@ -271,6 +216,18 @@ class User extends DataObject {
         }
 
         return $makepass;
+    }
+
+    protected function clear() {
+
+        $this->bind([
+            'id' => 0,
+            'sendEmail' => 0,
+            'guest' => 1,
+            'params' => new Registry,
+            'profile' => new \stdClass()
+        ]);
+
     }
 
 }
