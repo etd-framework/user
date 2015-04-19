@@ -146,7 +146,7 @@ class User extends DataObject {
         }
 
         // On regarde si l'utilisateur n'est pas déjà en cache.
-        if (!array_key_exists($id, self::$instances) || $force) {
+        if (!isset(self::$instances[$id]) || $force) {
 
             $text = (new LanguageFactory)->getText();
 
@@ -177,10 +177,12 @@ class User extends DataObject {
 
                 // On vire le mot de passe.
                 $user->password = '';
-
             }
 
-            self::$instances[$id] = clone $this->bind($user);
+            $instance = new User($this->session, $this->db);
+            $instance->bind($user);
+
+            self::$instances[$id] = $instance;
 
         }
 
