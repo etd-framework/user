@@ -46,6 +46,8 @@ class User extends DataObject implements ContainerAwareInterface {
      */
     public function __construct(Container $container) {
 
+        $this->setContainer($container);
+
         parent::__construct([
             'id'        => 0,
             'sendEmail' => 0,
