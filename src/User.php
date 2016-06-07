@@ -130,7 +130,9 @@ class User extends DataObject implements ContainerAwareInterface {
         // Si aucun id n'est passé, on tente de le trouvé dans la session.
         if (empty($id)) {
 
-            $id = (int)$container->get('session')->get('user_id');
+            if ($container->has('session')) {
+                $id = (int)$container->get('session')->get('user_id');
+            }
 
             // Si c'est toujours vide, on retourne l'utilisateur courant.
             if (empty($id)) {
