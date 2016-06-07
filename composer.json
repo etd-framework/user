@@ -17,7 +17,6 @@
     "php": ">=5.4",
     "joomla/crypt": "~1.0",
     "joomla/data": "2.0.*@dev",
-    "joomla/database": "~1.0",
     "joomla/registry": "2.0.*@dev",
     "joomla/utilities": "~1.0",
     "etdsolutions/acl": "@dev",

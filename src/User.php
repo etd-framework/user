@@ -15,9 +15,10 @@ use EtdSolutions\Table\UserTable;
 
 use Joomla\Crypt\Crypt;
 use Joomla\Data\DataObject;
-use Joomla\Database\DatabaseDriver;
+use Joomla\DI\Container;
+use Joomla\DI\ContainerAwareInterface;
+use Joomla\DI\ContainerAwareTrait;
 use Joomla\Registry\Registry;
-use Joomla\Session\Session;
 use Joomla\Utilities\ArrayHelper;
 
 /**
@@ -29,17 +30,9 @@ use Joomla\Utilities\ArrayHelper;
  * @property bool     $guest  True si l'utilisateur n'est pas connecté.
  * @property Registry $params Un registre contenant les paramètres personnalisés de l'utilisateur.
  */
-class User extends DataObject {
+class User extends DataObject implements ContainerAwareInterface {
 
-    /**
-     * @var Session L'objet session.
-     */
-    private $session;
-
-    /**
-     * @var DatabaseDriver L'objet DB.
-     */
-    private $db;
+    use ContainerAwareTrait;
 
     /**
      * @var array Un tableau pour mettre en cache les propriétés des instances.
@@ -49,20 +42,16 @@ class User extends DataObject {
     /**
      * Constructeur.
      *
-     * @param Session        $session La session courrante.
-     * @param DatabaseDriver $db      Le gestionnaire de base de données.
+     * @param Container $container
      */
-    public function __construct(Session $session, DatabaseDriver $db) {
-
-        $this->session = $session;
-        $this->db      = $db;
+    public function __construct(Container $container) {
 
         parent::__construct([
-            'id' => 0,
+            'id'        => 0,
             'sendEmail' => 0,
-            'guest' => 1,
-            'params' => new Registry,
-            'profile' => new \stdClass()
+            'guest'     => 1,
+            'params'    => new Registry,
+            'profile'   => new \stdClass()
         ]);
 
     }
@@ -89,8 +78,9 @@ class User extends DataObject {
      */
     public function authorise($section, $action = '') {
 
-        $acl     = Acl::getInstance($this->db);
-        $user_id = (int) $this->getProperty('id');
+        $container = $this->getContainer();
+        $acl       = Acl::getInstance($container->get('db'));
+        $user_id   = (int)$this->getProperty('id');
 
         // Raccourci
         if (strpos($section, '.') !== false) {
@@ -111,7 +101,8 @@ class User extends DataObject {
     public function setLastVisit($timestamp = null) {
 
         // On récupère le table.
-        $table = new UserTable($this->db);
+        $container = $this->getContainer();
+        $table     = new UserTable($container->get('db'));
 
         // On met à jour la date.
         return $table->setLastVisit($timestamp, $this->getProperty('id'));
@@ -120,8 +111,8 @@ class User extends DataObject {
     /**
      * Méthode pour charger les données d'un utilisateur.
      *
-     * @param   int   $id    L'id de l'utilisateur.
-     * @param   bool  $force True pour forcer le rechargement.
+     * @param   int  $id    L'id de l'utilisateur.
+     * @param   bool $force True pour forcer le rechargement.
      *
      * @return  User
      *
@@ -129,17 +120,20 @@ class User extends DataObject {
      */
     public function load($id = null, $force = false) {
 
+        $container = $this->getContainer();
+
         // On s'assure d'avoir un integer.
-        $id = (int) $id;
+        $id = (int)$id;
 
         // Si aucun id n'est passé, on tente de le trouvé dans la session.
         if (empty($id)) {
 
-            $id = (int) $this->session->get('user_id');
+            $id = (int)$container->get('session')->get('user_id');
 
             // Si c'est toujours vide, on retourne l'utilisateur courant.
             if (empty($id)) {
                 $this->clear();
+
                 return $this;
             }
 
@@ -151,7 +145,7 @@ class User extends DataObject {
             $text = (new LanguageFactory)->getText();
 
             // On récupère le table.
-            $table = new UserTable($this->db);
+            $table = new UserTable($container->get('db'));
 
             // On tente de charger l'utilisateur.
             if (!$table->load($id)) {
@@ -179,7 +173,7 @@ class User extends DataObject {
                 $user->password = '';
             }
 
-            $instance = new User($this->session, $this->db);
+            $instance = new User($container);
             $instance->bind($user);
 
             self::$instances[$id] = $instance;
@@ -223,11 +217,11 @@ class User extends DataObject {
     protected function clear() {
 
         $this->bind([
-            'id' => 0,
+            'id'        => 0,
             'sendEmail' => 0,
-            'guest' => 1,
-            'params' => new Registry,
-            'profile' => new \stdClass()
+            'guest'     => 1,
+            'params'    => new Registry,
+            'profile'   => new \stdClass()
         ]);
 
     }
