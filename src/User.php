@@ -16,6 +16,9 @@ use EtdSolutions\Table\UserTable;
 use Joomla\Crypt\Crypt;
 use Joomla\Data\DataObject;
 use Joomla\Database\DatabaseDriver;
+use Joomla\DI\Container;
+use Joomla\DI\ContainerAwareInterface;
+use Joomla\DI\ContainerAwareTrait;
 use Joomla\Registry\Registry;
 use Joomla\Session\Session;
 use Joomla\Utilities\ArrayHelper;
@@ -29,17 +32,9 @@ use Joomla\Utilities\ArrayHelper;
  * @property bool     $guest  True si l'utilisateur n'est pas connecté.
  * @property Registry $params Un registre contenant les paramètres personnalisés de l'utilisateur.
  */
-class User extends DataObject {
+class User extends DataObject implements ContainerAwareInterface {
 
-    /**
-     * @var Session L'objet session.
-     */
-    private $session;
-
-    /**
-     * @var DatabaseDriver L'objet DB.
-     */
-    private $db;
+    use ContainerAwareTrait;
 
     /**
      * @var array Un tableau pour mettre en cache les propriétés des instances.
@@ -49,13 +44,11 @@ class User extends DataObject {
     /**
      * Constructeur.
      *
-     * @param Session        $session La session courrante.
-     * @param DatabaseDriver $db      Le gestionnaire de base de données.
+     * @param Container $container
      */
-    public function __construct(Session $session, DatabaseDriver $db) {
+    public function __construct(Container $container) {
 
-        $this->session = $session;
-        $this->db      = $db;
+        $this->setContainer($container);
 
         parent::__construct([
             'id' => 0,
@@ -89,7 +82,7 @@ class User extends DataObject {
      */
     public function authorise($section, $action = '') {
 
-        $acl     = Acl::getInstance($this->db);
+        $acl     = Acl::getInstance($this->getContainer()->get('db'));
         $user_id = (int) $this->getProperty('id');
 
         // Raccourci
@@ -110,8 +103,12 @@ class User extends DataObject {
      */
     public function setLastVisit($timestamp = null) {
 
+        // Container
+        $container = $this->getContainer();
+
         // On récupère le table.
-        $table = new UserTable($this->db);
+        $table = new UserTable($container->get('db'));
+        $table->setContainer($container);
 
         // On met à jour la date.
         return $table->setLastVisit($timestamp, $this->getProperty('id'));
@@ -132,10 +129,14 @@ class User extends DataObject {
         // On s'assure d'avoir un integer.
         $id = (int) $id;
 
+        // Session
+        $container = $this->getContainer();
+        $session   = $container->get('session');
+
         // Si aucun id n'est passé, on tente de le trouvé dans la session.
         if (empty($id)) {
 
-            $id = (int) $this->session->get('user_id');
+            $id = (int) $session->get('user_id');
 
             // Si c'est toujours vide, on retourne l'utilisateur courant.
             if (empty($id)) {
@@ -148,10 +149,11 @@ class User extends DataObject {
         // On regarde si l'utilisateur n'est pas déjà en cache.
         if (!isset(self::$instances[$id]) || $force) {
 
-            $text = (new LanguageFactory)->getText();
+            $text = $container->get('language')->getText();
 
             // On récupère le table.
-            $table = new UserTable($this->db);
+            $table = new UserTable($container->get('db'));
+            $table->setContainer($container);
 
             // On tente de charger l'utilisateur.
             if (!$table->load($id)) {
@@ -179,7 +181,7 @@ class User extends DataObject {
                 $user->password = '';
             }
 
-            $instance = new User($this->session, $this->db);
+            $instance = new User($container);
             $instance->bind($user);
 
             self::$instances[$id] = $instance;
