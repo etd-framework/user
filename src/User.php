@@ -10,17 +10,14 @@
 namespace EtdSolutions\User;
 
 use EtdSolutions\Acl\Acl;
-use EtdSolutions\Language\LanguageFactory;
 use EtdSolutions\Table\UserTable;
 
 use Joomla\Crypt\Crypt;
 use Joomla\Data\DataObject;
-use Joomla\Database\DatabaseDriver;
 use Joomla\DI\Container;
 use Joomla\DI\ContainerAwareInterface;
 use Joomla\DI\ContainerAwareTrait;
 use Joomla\Registry\Registry;
-use Joomla\Session\Session;
 use Joomla\Utilities\ArrayHelper;
 
 /**
@@ -51,11 +48,11 @@ class User extends DataObject implements ContainerAwareInterface {
         $this->setContainer($container);
 
         parent::__construct([
-            'id' => 0,
+            'id'        => 0,
             'sendEmail' => 0,
-            'guest' => 1,
-            'params' => new Registry,
-            'profile' => new \stdClass()
+            'guest'     => 1,
+            'params'    => new Registry,
+            'profile'   => new \stdClass()
         ]);
 
     }
@@ -82,8 +79,9 @@ class User extends DataObject implements ContainerAwareInterface {
      */
     public function authorise($section, $action = '') {
 
-        $acl     = Acl::getInstance($this->getContainer()->get('db'));
-        $user_id = (int) $this->getProperty('id');
+        $container = $this->getContainer();
+        $acl       = Acl::getInstance($container->get('db'));
+        $user_id   = (int)$this->getProperty('id');
 
         // Raccourci
         if (strpos($section, '.') !== false) {
@@ -117,8 +115,8 @@ class User extends DataObject implements ContainerAwareInterface {
     /**
      * Méthode pour charger les données d'un utilisateur.
      *
-     * @param   int   $id    L'id de l'utilisateur.
-     * @param   bool  $force True pour forcer le rechargement.
+     * @param   int  $id    L'id de l'utilisateur.
+     * @param   bool $force True pour forcer le rechargement.
      *
      * @return  User
      *
@@ -126,21 +124,23 @@ class User extends DataObject implements ContainerAwareInterface {
      */
     public function load($id = null, $force = false) {
 
-        // On s'assure d'avoir un integer.
-        $id = (int) $id;
-
-        // Session
+        // Container
         $container = $this->getContainer();
-        $session   = $container->get('session');
+
+        // On s'assure d'avoir un integer.
+        $id = (int)$id;
 
         // Si aucun id n'est passé, on tente de le trouvé dans la session.
         if (empty($id)) {
 
-            $id = (int) $session->get('user_id');
+            if ($container->has('session')) {
+                $id = (int)$container->get('session')->get('user_id');
+            }
 
             // Si c'est toujours vide, on retourne l'utilisateur courant.
             if (empty($id)) {
                 $this->clear();
+
                 return $this;
             }
 
@@ -225,11 +225,11 @@ class User extends DataObject implements ContainerAwareInterface {
     protected function clear() {
 
         $this->bind([
-            'id' => 0,
+            'id'        => 0,
             'sendEmail' => 0,
-            'guest' => 1,
-            'params' => new Registry,
-            'profile' => new \stdClass()
+            'guest'     => 1,
+            'params'    => new Registry,
+            'profile'   => new \stdClass()
         ]);
 
     }
