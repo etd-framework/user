@@ -149,36 +149,29 @@ class User extends DataObject implements ContainerAwareInterface {
         // On regarde si l'utilisateur n'est pas déjà en cache.
         if (!isset(self::$instances[$id]) || $force) {
 
-            $text = $container->get('language')->getText();
+            // Si la gestion du cache est activée dans l'application.
+            $container = $this->getContainer();
+            if ($container->has('cache')) {
 
-            // On récupère le table.
-            $table = new UserTable($container->get('db'));
-            $table->setContainer($container);
+                // On récupère le gestionnaire de cache.
+                $cache = $container->get('cache');
 
-            // On tente de charger l'utilisateur.
-            if (!$table->load($id)) {
+                // On tente de charger l'enregistrement depuis le cache.
+                $user = $cache->get($id, "__user");
 
-                // On déclenche une exception.
-                throw new \RuntimeException($text->sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
+                // S'il n'existe pas dans le cache.
+                if (!isset($user)) {
 
-            } else {
+                    // On charge l'élément.
+                    $user = $this->_load($id);
 
-                // On récupère ses propriétés.
-                $user = $table->dump();
+                    // On stoke l'élément dans le cache.
+                    $cache->set($user, $id, "__user");
 
-                // Ce n'est plus un invité.
-                $user->guest = 0;
-
-                // On transforme les paramètres en registre.
-                $user->params = new Registry($user->params);
-
-                // On transforme le profile en objet.
-                if (is_array($user->profile)) {
-                    $user->profile = ArrayHelper::toObject($user->profile);
                 }
 
-                // On vire le mot de passe.
-                $user->password = '';
+            } else { // On charge l'élément.
+                $user = $this->_load($id);
             }
 
             $instance = new User($container);
@@ -220,6 +213,45 @@ class User extends DataObject implements ContainerAwareInterface {
         }
 
         return $makepass;
+    }
+
+    protected function _load($id) {
+
+        $container = $this->getContainer();
+        $text = $container->get('language')->getText();
+
+        // On récupère le table.
+        $table = new UserTable($container->get('db'));
+        $table->setContainer($container);
+
+        // On tente de charger l'utilisateur.
+        if (!$table->load($id)) {
+
+            // On déclenche une exception.
+            throw new \RuntimeException($text->sprintf('USER_ERROR_UNABLE_TO_LOAD_USER', $id));
+
+        } else {
+
+            // On récupère ses propriétés.
+            $user = $table->dump();
+
+            // Ce n'est plus un invité.
+            $user->guest = 0;
+
+            // On transforme les paramètres en registre.
+            $user->params = new Registry($user->params);
+
+            // On transforme le profile en objet.
+            if (is_array($user->profile)) {
+                $user->profile = ArrayHelper::toObject($user->profile);
+            }
+
+            // On vire le mot de passe.
+            $user->password = '';
+        }
+
+        return $user;
+
     }
 
     protected function clear() {
