@@ -12,7 +12,6 @@ namespace EtdSolutions\User;
 use EtdSolutions\Acl\Acl;
 
 use Joomla\Crypt\Crypt;
-use Joomla\Crypt\Password\Simple;
 use Joomla\Database\DatabaseDriver;
 
 class UserHelper {
@@ -27,16 +26,10 @@ class UserHelper {
      */
     private $db;
 
-    /**
-     * @var Simple Classe pour crypter/décrypter les mots de passe.
-     */
-    private $simple;
-
     function __construct($db) {
 
-        $this->db     = $db;
-        $this->acl    = Acl::getInstance($db);
-        $this->simple = new Simple();
+        $this->db  = $db;
+        $this->acl = Acl::getInstance($db);
 
     }
 
@@ -109,12 +102,14 @@ class UserHelper {
      * Retourne une chaine crypté du mot de passe.
      *
      * @param   string  $password  Le mot de passe à cryper.
+     * @param   integer $algo      L'algorithme à utiliser.
+     * @param   array   $options   Un tableau associatif contenant les options.
      *
      * @return  string  Le mot de passe crypté.
      */
-    public function cryptPassword($password) {
+    public function cryptPassword($password, $algo = PASSWORD_BCRYPT, $options = null) {
 
-        return $this->simple->create($password);
+        return password_hash($password, $algo, $options);
 
     }
 
@@ -128,7 +123,7 @@ class UserHelper {
      */
     public function verifyPassword($password, $hash) {
 
-        return $this->simple->verify($password, $hash);
+        return password_verify($password, $hash);
 
     }
 
