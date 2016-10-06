@@ -109,7 +109,7 @@ class UserHelper {
      */
     public function cryptPassword($password, $algo = PASSWORD_BCRYPT, $options = null) {
 
-        return password_hash($password, $algo, $options);
+        return password_hash($password, PASSWORD_BCRYPT);
 
     }
 
