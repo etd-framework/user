@@ -156,17 +156,17 @@ class User extends DataObject implements ContainerAwareInterface {
                 // On récupère le gestionnaire de cache.
                 $cache = $container->get('cache');
 
-                // On tente de charger l'enregistrement depuis le cache.
-                $user = $cache->get($id, "__user");
+                $storeid = "__users|" . $id;
 
-                // S'il n'existe pas dans le cache.
-                if (!isset($user)) {
+                if ($cache->has($storeid)) {
+                    $user = $cache->get($storeid);
+                } else {
 
                     // On charge l'élément.
                     $user = $this->_load($id);
 
                     // On stoke l'élément dans le cache.
-                    $cache->set($user, $id, "__user");
+                    $cache->set($storeid, $user);
 
                 }
 
