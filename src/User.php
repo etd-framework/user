@@ -156,7 +156,7 @@ class User extends DataObject implements ContainerAwareInterface {
                 // On récupère le gestionnaire de cache.
                 $cache = $container->get('cache');
 
-                $storeid = "__users|" . $id;
+                $storeid = \EtdSolutions\Model\CacheHelper::getStoreId($id, "__users");
 
                 if ($cache->has($storeid)) {
                     $user = $cache->get($storeid);
